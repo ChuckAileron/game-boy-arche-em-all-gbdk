@@ -1,0 +1,18 @@
+Compilar y ejecutar emulador:
+  make run all
+
+Limpiar compilacion:
+  make run clean
+
+Calculo de Tiles:
+  - 8x8: 64 pixeles -> 1 tile
+  - 8x16: 128 pixeles -> 2 tiles
+  - 16x16: 256 pixeles -> 4 tiles
+  - 32x32: 1024 pixeles -> 16 tiles
+  - 48x48: 2304 pixeles -> 36 tiles
+  - 64x16: 1024 pixeles -> 16 tiles
+  - 64x64: 4096 pixeles -> 64 tiles
+  - 80x16: 1280 pixeles ->  20 tiles
+  - 128x16: 2048 pixeles -> 32 tiles
+  - 128x128: 16384 pixeles -> 256 tiles
+  - 160x144: 23040 pixeles -> 360 tiles
