@@ -1,1 +1,19 @@
-arche.gb
+# Build artifacts (GBDK/lcc)
+*.gb
+*.o
+*.ihx
+*.noi
+*.lst
+*.map
+*.sym
+*.rel
+*.asm
+!main.asm
+
+# Gráficos generados por rgbgfx.bat
+sprite.bin
+
+# Sistema operativo / editor
+Thumbs.db
+.DS_Store
+.vscode/
