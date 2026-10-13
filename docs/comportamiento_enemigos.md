@@ -81,8 +81,9 @@ avanzan hacia la izquierda.
 | Medusa | 145 ticks |
 
 - **Wasp**: dispara un proyectil **recto** hacia la izquierda (`dy = 0`).
-- **Medusa**: apunta al jugador; `dy` vale `-1`, `0` o `1` según la diferencia
-  de altura entre ambos.
+- **Medusa**: dispara **dos proyectiles en diagonal** a la vez (uno hacia
+  arriba, `dy = -1`, y otro hacia abajo, `dy = 1`); nunca dispara recto hacia el
+  sprite del jugador.
 
 Los proyectiles salen desde `(enemy.x, enemy.y + 8)`.
 
@@ -122,7 +123,7 @@ El enemigo solo es vulnerable si está activo y **no** está en `DYING`.
 | `XP_BLADE_CROW` | 16 |
 | `XP_IRON_WASP` | 20 |
 | `XP_GHOST_MEDUSA` | 24 |
-| `XP_SENTINEL_DRONE` | 32 |
+| `XP_SENTINEL_DRONE` | 40 |
 | `XP_EMBER_DRACO` | 48 |
 | `XP_VESPER` | 160 |
 | `XP_WASP_QUEEN` | 280 |
@@ -138,12 +139,16 @@ completitud:
 
 | Tipo | Nombre | Vida |
 |---|---|---:|
-| `ENEMY_DRONE` | Drone | 2 |
+| `ENEMY_DRONE` | Drone | 4 |
 | `ENEMY_DRACO` | Draco | 3 |
 | `ENEMY_WASP` | Wasp | 2 |
 | `ENEMY_MEDUSA` | Medusa | 3 |
 | `ENEMY_BAT` | Bat | 2 |
 | `ENEMY_WINGED_EYE` | Winged Eye | 2 |
+
+El **Drone** es metálico y usa un ataque en abanico (spread), por lo que tiene
+**más vida (4)** que los enemigos normales (2) y que Draco/Medusa (3), y otorga
+**más XP (`XP_SENTINEL_DRONE`, 40)** que los enemigos normales de la tabla.
 
 Características: animaciones `flying/attacking/hurt/dying` de 4/6/2/4
 fotogramas (8 ticks por fotograma), patrones de movimiento por tipo (avance con

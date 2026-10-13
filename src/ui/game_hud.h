@@ -84,15 +84,18 @@ static void game_hud_draw_single_digit(uint8_t tile, uint8_t digit) {
 
 static void game_hud_draw_health_segment(uint8_t tile, uint8_t style) {
   uint8_t x, y;
-  if (style == 1)
-    return; /* Lost health slots are fully transparent. */
   for (y = 0; y < 8; ++y) {
     for (x = 0; x < 8; ++x) {
       uint8_t color = 0;
-      if (style == 0)
-        color = 3;
-      else if (x == 0 || x == 7 || y == 0 || y == 7 || ((x + y) & 1u) == 0)
-        color = 1;
+      if (style == 0) {
+        color = 3; /* Vida actual: cuadro negro solido. */
+      } else if (style == 1) {
+        /* Vida perdida: borde negro con relleno claro, para que la barra
+           se vea consistente (cuadro vacio en vez de desaparecer). */
+        color = (x == 0 || x == 7 || y == 0 || y == 7) ? 3 : 1;
+      } else if (x == 0 || x == 7 || y == 0 || y == 7 || ((x + y) & 1u) == 0) {
+        color = 1; /* Vida bloqueada (aun no desbloqueada): damero claro. */
+      }
       if (color)
         game_hud_pixel(tile, x, y, color);
     }
@@ -155,6 +158,7 @@ static void game_hud_show_info(uint8_t health, uint8_t max_health, uint8_t level
                                uint32_t xp_progress, uint32_t xp_required) {
   uint8_t i;
   game_hud_update(health, max_health, level);
+  move_sprite(GAME_HUD_HEART_SPRITE, 0, 0);
 
   set_sprite_tile(0, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_LVL_LABEL));
   set_sprite_tile(1, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_LEVEL_VALUE));
@@ -204,6 +208,7 @@ static void game_hud_show_info(uint8_t health, uint8_t max_health, uint8_t level
 }
 
 static void game_hud_init(uint8_t health, uint8_t max_health, uint8_t level) {
+  /* Corazon 8x8 simple y simetrico: cada fila es palindromo de bits. */
   static const uint8_t heart_rows[8] = {0x00, 0x66, 0xFF, 0xFF, 0x7E, 0x3C, 0x18, 0x00};
   static const uint8_t lvl_rows[8]   = {0x96, 0x96, 0x96, 0x96, 0x96, 0x96, 0xCB, 0x00};
   static const uint8_t rows_x[5]     = {5, 5, 2, 5, 5};

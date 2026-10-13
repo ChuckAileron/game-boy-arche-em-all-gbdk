@@ -91,7 +91,10 @@ static void level_1_enemy_render(uint8_t index) {
 }
 
 static uint16_t level_1_enemy_reward(EnemyRewardKind kind) {
-  static const uint16_t rewards[9] = {8, 12, 16, 20, 24, 32, 48, 160, 280};
+  /* XP_BAT_NEEDLE, XP_WINGED_EYE, XP_BLADE_CROW, XP_IRON_WASP, XP_GHOST_MEDUSA,
+     XP_SENTINEL_DRONE (mas alto por ser metalico y con ataque spread),
+     XP_EMBER_DRACO, XP_VESPER, XP_WASP_QUEEN. */
+  static const uint16_t rewards[9] = {8, 12, 16, 20, 24, 40, 48, 160, 280};
   return (kind <= XP_WASP_QUEEN) ? rewards[kind] : 0;
 }
 
@@ -230,8 +233,10 @@ static void level_1_enemy_update(uint8_t index, uint8_t player_y) {
     if (enemy->type == ENEMY_WASP) {
       level_1_spawn_shot(enemy->x, enemy->y + 8, 0);
     } else {
-      int8_t aim = (player_y + 8 < enemy->y + 8) ? -1 : (player_y + 8 > enemy->y + 8) ? 1 : 0;
-      level_1_spawn_shot(enemy->x, enemy->y + 8, aim);
+      /* Medusa: dos proyectiles en diagonal (uno arriba y otro abajo),
+         nunca uno recto hacia el sprite del jugador. */
+      level_1_spawn_shot(enemy->x, enemy->y + 8, -1);
+      level_1_spawn_shot(enemy->x, enemy->y + 8, 1);
     }
   }
   level_1_enemy_render(index);

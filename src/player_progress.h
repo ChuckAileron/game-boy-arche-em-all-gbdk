@@ -9,6 +9,10 @@
 #define PLAYER_INVULNERABILITY_TICKS 45u
 #define PLAYER_RESPAWN_TICKS         90u
 
+/* Habilidades desbloqueadas por nivel. */
+#define PLAYER_SPREAD_SKILL_LEVEL      10u /* Ataque spread (B). */
+#define PLAYER_FAST_SPREAD_SKILL_LEVEL 15u /* Fast spread: se puede spamear B. */
+
 typedef struct {
   uint8_t  stage;
   uint8_t  level;

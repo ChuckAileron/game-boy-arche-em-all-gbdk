@@ -152,7 +152,14 @@ static void enemy_init(Enemy *enemy, uint8_t type, uint8_t x, uint8_t y) {
   enemy->attack_tick     = 0;
   enemy->pattern_tick    = 0;
   enemy->direction       = 0;
-  enemy->health          = (type == ENEMY_DRACO || type == ENEMY_MEDUSA) ? 3 : 2;
+  /* El Drone es metalico y dispara en abanico: aguanta mas que los enemigos
+     normales (2 de vida) e incluso que Draco/Medusa (3). */
+  if (type == ENEMY_DRONE)
+    enemy->health = 4;
+  else if (type == ENEMY_DRACO || type == ENEMY_MEDUSA)
+    enemy->health = 3;
+  else
+    enemy->health = 2;
 }
 
 /* Per-type movement and attack cadences. Call once per game-loop frame. */

@@ -1,7 +1,12 @@
 #ifndef FIRE_H
 #define FIRE_H
 
+#include "../player_progress.h"
 #include "../sprites/sprite_ids.h"
+
+// Enfriamiento entre rafagas de spread (en frames).
+#define SPREAD_FIRE_DELAY      10
+#define FAST_SPREAD_FIRE_DELAY 6
 
 // #########################################//
 // #               VARIABLES               #//
@@ -14,6 +19,8 @@ volatile INT8  spread_bullet_dx[3],
 volatile UINT8 spread_bullet_active[3] = {0, 0,
                                           0}; // Estados de las balas (0 = inactiva, 1 = activa)
 volatile UINT8 fire_delay              = 0;   // Retraso entre disparos
+volatile UINT8 spread_unlocked         = 0;   // Habilidad spread (nivel 10)
+volatile UINT8 fast_spread_unlocked    = 0;   // Habilidad fast spread (nivel 15)
 
 // #########################################//
 // #              ENCABEZADOS              #//
@@ -23,6 +30,13 @@ void fire_spread(UINT8 x, UINT8 y);
 void update_single_bullet(void);
 void update_spread_bullets(void);
 void decrease_fire_delay(void);
+void fire_update_skills(UINT8 level);
+
+// Sincroniza el desbloqueo de habilidades con el nivel actual del jugador.
+void fire_update_skills(UINT8 level) {
+  spread_unlocked      = (level >= PLAYER_SPREAD_SKILL_LEVEL);
+  fast_spread_unlocked = (level >= PLAYER_FAST_SPREAD_SKILL_LEVEL);
+}
 
 // #################################################################//
 // #                      FUNCIONES DE ACCION                      #//
@@ -37,34 +51,48 @@ void fire_single_bullet(UINT8 x, UINT8 y) {
   }
 }
 
-// Activa las tres balas
+// Activa las tres balas. La habilidad debe estar desbloqueada (nivel 10).
 void fire_spread(UINT8 x, UINT8 y) {
-  if (fire_delay == 0) { // Solo dispara si no hay retraso activo
+  if (!spread_unlocked)  // Ataque spread todavia no desbloqueado
+    return;
+
+  if (fire_delay != 0)   // Respeta el enfriamiento entre rafagas
+    return;
+
+  if (!fast_spread_unlocked) {
+    // Spread normal: espera a que los 3 proyectiles anteriores desaparezcan.
+    // Asi nunca se generan rafagas incompletas al pulsar rapido el boton.
     for (UINT8 i = 0; i < 3; i++) {
-      if (!spread_bullet_active[i]) {
-        spread_bullet_x[i] = x + 16; // Todas las balas empiezan justo a la derecha del personaje
-        spread_bullet_y[i] = y + 8;  // Centra las balas verticalmente respecto al personaje
-
-        // Configurar la dirección de las balas
-        spread_bullet_dx[i] = 2; // Todas las balas se mueven horizontalmente
-
-        if (i == 1) {
-          spread_bullet_dy[i] = -1;
-        } // Bala superior (diagonal hacia arriba)
-        else if (i == 2) {
-          spread_bullet_dy[i] = 1;
-        } // Bala inferior (diagonal hacia abajo)
-        else {
-          spread_bullet_dy[i] = 0;
-        } // Bala central (horizontal)
-
-        spread_bullet_active[i] = 1; // Marca la bala como activa
-        move_sprite(BULLET_SPRITE_FIRST + i, spread_bullet_x[i],
-                    spread_bullet_y[i]); // Muestra el sprite de la bala
-      }
+      if (spread_bullet_active[i])
+        return;
     }
-    fire_delay = 10; // Establece un retraso de 10 frames antes del siguiente disparo
   }
+
+  // Siempre lanza un grupo completo de 3 proyectiles.
+  for (UINT8 i = 0; i < 3; i++) {
+    spread_bullet_x[i] = x + 16; // Todas las balas empiezan justo a la derecha del personaje
+    spread_bullet_y[i] = y + 8;  // Centra las balas verticalmente respecto al personaje
+
+    // Configurar la direccion de las balas
+    spread_bullet_dx[i] = 2; // Todas las balas se mueven horizontalmente
+
+    if (i == 1) {
+      spread_bullet_dy[i] = -1;
+    } // Bala superior (diagonal hacia arriba)
+    else if (i == 2) {
+      spread_bullet_dy[i] = 1;
+    } // Bala inferior (diagonal hacia abajo)
+    else {
+      spread_bullet_dy[i] = 0;
+    } // Bala central (horizontal)
+
+    spread_bullet_active[i] = 1; // Marca la bala como activa
+    move_sprite(BULLET_SPRITE_FIRST + i, spread_bullet_x[i],
+                spread_bullet_y[i]); // Muestra el sprite de la bala
+  }
+
+  // El fast spread puede re-disparar antes: enfriamiento mas corto.
+  fire_delay = fast_spread_unlocked ? FAST_SPREAD_FIRE_DELAY : SPREAD_FIRE_DELAY;
 }
 
 // Funcion para actualizar movimiento del disparo

@@ -84,6 +84,25 @@ subir varios niveles con una sola recompensa si esta es muy grande).
 Al subir un nivel que cruce uno de estos umbrales, la vida actual aumenta en la
 misma cantidad que la máxima (el jugador recibe los "corazones" nuevos llenos).
 
+## Habilidades desbloqueadas por nivel
+
+Se sincronizan con el nivel en `fire_update_skills()` (`src/actions/fire.h`),
+invocada al iniciar, al subir de nivel y al reaparecer.
+
+| Nivel | Habilidad | Efecto |
+|---:|---|---|
+| 10 (`PLAYER_SPREAD_SKILL_LEVEL`) | **Ataque spread** (botón B) | Dispara una ráfaga fija de **3 proyectiles** (uno recto, uno en diagonal arriba y otro abajo). Antes del nivel 10, B no hace nada. |
+| 15 (`PLAYER_FAST_SPREAD_SKILL_LEVEL`) | **Fast spread** | Permite **spamear** B: se pueden lanzar ráfagas de 3 sin esperar a que los proyectiles anteriores salgan de pantalla, con un enfriamiento más corto (`FAST_SPREAD_FIRE_DELAY = 6` frente a `SPREAD_FIRE_DELAY = 10`). |
+
+Reglas de disparo (`fire_spread`):
+
+- Sin el spread desbloqueado, la función retorna sin hacer nada.
+- Con el spread normal, solo se dispara si **los 3 proyectiles anteriores ya
+  salieron**; así nunca se generan ráfagas incompletas al pulsar rápido.
+- Al disparar siempre se lanzan **los 3 proyectiles juntos**, nunca de a uno.
+- Con fast spread se omite la espera anterior y cada ráfaga reinicia el grupo de
+  3 desde la posición del jugador.
+
 ## Recibir daño e invulnerabilidad
 
 `damage_player(damage)` en `src/main.c`:

@@ -63,6 +63,7 @@ static void award_enemy_experience(uint16_t reward) {
     player_xp          = 0;
     player_xp_required = 0;
   }
+  fire_update_skills(player_level);
   player_hud_dirty = 1;
 }
 
@@ -89,6 +90,7 @@ static void respawn_at_checkpoint(void) {
   player_defeated        = 0;
   player_respawn_timer   = 0;
   clear_player_projectiles();
+  fire_update_skills(player_level);
   level_1_enemies_init(player_checkpoint.stage_progress);
   reset_level_1_sky_scroll();
   player_hud_dirty = 1;
@@ -157,6 +159,7 @@ void main(void) {
   init_spread_bullets();            // Inicializa sprite de proyectil disparo
   init_pause_overlay();
   level_1_enemies_init(0); // Wasp y Medusa del primer nivel
+  fire_update_skills(player_level);
   game_hud_init(player_health, player_max_health, player_level);
   DISPLAY_ON;
   SHOW_BKG;
@@ -237,7 +240,7 @@ void main(void) {
       fire_single_bullet(player_x, player_y);
     }
     if (!player_defeated && (input & J_B)) {
-      fire_spread(player_x, player_y);
+      fire_spread(player_x, player_y); // Skill gated: nivel 10 (spread) / 15 (fast)
     }
 
     if (!player_defeated) {
@@ -264,7 +267,6 @@ void main(void) {
       player_hud_dirty = 0;
     }
     update_level_1_sky(); // Scroll horizontal único del fondo
-    delay(10);            // Retraso para suavizar el movimiento
-    wait_vbl_done();
+    wait_vbl_done();      // Sincroniza con el frame (60 Hz); sin delay extra
   }
 }
