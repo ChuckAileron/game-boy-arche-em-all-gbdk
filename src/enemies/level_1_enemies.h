@@ -11,18 +11,32 @@
 
 typedef enum { ENEMY_WASP, ENEMY_MEDUSA } Level1EnemyType;
 typedef enum { ENEMY_FLYING, ENEMY_ATTACKING, ENEMY_HURT, ENEMY_DYING } Level1EnemyAnimation;
+typedef enum {
+  XP_BAT_NEEDLE,
+  XP_WINGED_EYE,
+  XP_BLADE_CROW,
+  XP_IRON_WASP,
+  XP_GHOST_MEDUSA,
+  XP_SENTINEL_DRONE,
+  XP_EMBER_DRACO,
+  XP_VESPER,
+  XP_WASP_QUEEN
+} EnemyRewardKind;
 
 typedef struct {
-  uint8_t type, x, y, active;
-  uint8_t animation, frame, frame_tick;
-  uint8_t attack_tick, movement_tick, direction;
-  uint8_t rendered_animation, rendered_frame, frame_loaded;
-  uint8_t sprite_tiles_dirty;
+  uint8_t  type, x, y, active;
+  uint8_t  animation, frame, frame_tick;
+  uint8_t  attack_tick, movement_tick, direction;
+  uint8_t  rendered_animation, rendered_frame, frame_loaded;
+  uint8_t  sprite_tiles_dirty;
+  uint8_t  xp_awarded, contact_damage;
+  uint16_t xp_reward;
 } Level1Enemy;
 
 typedef struct {
   uint8_t x, y, active;
   int8_t  dx, dy;
+  uint8_t damage;
 } Level1EnemyShot;
 
 static Level1Enemy     level_1_enemies[LEVEL_1_ENEMY_COUNT];
@@ -30,7 +44,18 @@ static Level1EnemyShot level_1_enemy_shots[ENEMY_PROJECTILE_COUNT];
 static uint8_t         level_1_enemy_tiles[LEVEL_1_ENEMY_COUNT][64];
 static uint8_t         level_1_respawn_timer;
 static uint8_t         level_1_wave_number;
-static const int8_t    enemy_sprite_offsets[4][2] = {{0, 0}, {8, 0}, {0, 8}, {8, 8}};
+static const int8_t    enemy_sprite_offsets[4][2]  = {{0, 0}, {8, 0}, {0, 8}, {8, 8}};
+static const uint8_t   enemy_attack_frame_ticks[6] = {8, 8, 6, 4, 6, 8};
+
+static uint8_t level_1_enemy_frame_duration(const Level1Enemy *enemy) {
+  if (enemy->animation == ENEMY_ATTACKING)
+    return enemy_attack_frame_ticks[enemy->frame % 6];
+  if (enemy->animation == ENEMY_HURT)
+    return 4;
+  if (enemy->animation == ENEMY_DYING)
+    return 5;
+  return 6;
+}
 
 static void level_1_enemy_render(uint8_t index) {
   Level1Enemy *enemy       = &level_1_enemies[index];
@@ -65,7 +90,13 @@ static void level_1_enemy_render(uint8_t index) {
   enemy->sprite_tiles_dirty = 0;
 }
 
-static void level_1_enemy_spawn(uint8_t index, uint8_t x, uint8_t y, uint8_t direction) {
+static uint16_t level_1_enemy_reward(EnemyRewardKind kind) {
+  static const uint16_t rewards[9] = {8, 12, 16, 20, 24, 32, 48, 160, 280};
+  return (kind <= XP_WASP_QUEEN) ? rewards[kind] : 0;
+}
+
+static void level_1_enemy_spawn(uint8_t index, uint8_t x, uint8_t y, uint8_t direction,
+                                uint16_t xp_reward) {
   Level1Enemy *enemy        = &level_1_enemies[index];
   enemy->type               = index == 0 ? ENEMY_WASP : ENEMY_MEDUSA;
   enemy->x                  = x;
@@ -77,6 +108,9 @@ static void level_1_enemy_spawn(uint8_t index, uint8_t x, uint8_t y, uint8_t dir
   enemy->attack_tick        = 0;
   enemy->movement_tick      = 0;
   enemy->direction          = direction;
+  enemy->xp_reward          = xp_reward;
+  enemy->xp_awarded         = 0;
+  enemy->contact_damage     = 1;
   enemy->frame_loaded       = 0;
   enemy->sprite_tiles_dirty = 1;
   level_1_enemy_render(index);
@@ -86,13 +120,14 @@ static void level_1_start_wave(void) {
   uint8_t wasp_y   = level_1_wave_number == 0 ? 44 : 28 + ((level_1_wave_number * 37u) % 80u);
   uint8_t medusa_y = level_1_wave_number == 0 ? 92 : 32 + ((level_1_wave_number * 53u) % 80u);
   ++level_1_wave_number;
-  level_1_enemy_spawn(0, 164, wasp_y, level_1_wave_number & 1u);
-  level_1_enemy_spawn(1, 172, medusa_y, (level_1_wave_number >> 1) & 1u);
+  level_1_enemy_spawn(0, 164, wasp_y, level_1_wave_number & 1u, level_1_enemy_reward(XP_IRON_WASP));
+  level_1_enemy_spawn(1, 172, medusa_y, (level_1_wave_number >> 1) & 1u,
+                      level_1_enemy_reward(XP_GHOST_MEDUSA));
 }
 
-static void level_1_enemies_init(void) {
+static void level_1_enemies_init(uint8_t starting_wave) {
   uint8_t i;
-  level_1_wave_number   = 0;
+  level_1_wave_number   = starting_wave;
   level_1_respawn_timer = 0;
   level_1_start_wave();
 
@@ -111,20 +146,25 @@ static void level_1_spawn_shot(uint8_t x, uint8_t y, int8_t dy) {
       level_1_enemy_shots[i].y      = y;
       level_1_enemy_shots[i].dx     = -1;
       level_1_enemy_shots[i].dy     = dy;
+      level_1_enemy_shots[i].damage = 1;
       level_1_enemy_shots[i].active = 1;
       return;
     }
   }
 }
 
-static void level_1_enemy_damage(uint8_t index) {
+static uint16_t level_1_enemy_damage(uint8_t index) {
   Level1Enemy *enemy = &level_1_enemies[index];
   if (!enemy->active || enemy->animation == ENEMY_DYING)
-    return;
+    return 0;
   /* Wasp and Medusa are defeated by one Arche projectile. */
   enemy->animation  = ENEMY_DYING;
   enemy->frame      = 0;
   enemy->frame_tick = 0;
+  if (enemy->xp_awarded)
+    return 0;
+  enemy->xp_awarded = 1;
+  return enemy->xp_reward;
 }
 
 static void level_1_enemy_update(uint8_t index, uint8_t player_y) {
@@ -133,7 +173,7 @@ static void level_1_enemy_update(uint8_t index, uint8_t player_y) {
   if (!enemy->active)
     return;
 
-  if (++enemy->frame_tick >= (enemy->animation == ENEMY_DYING ? 4 : 8)) {
+  if (++enemy->frame_tick >= level_1_enemy_frame_duration(enemy)) {
     uint8_t frame_count = (enemy->animation == ENEMY_ATTACKING) ? 6
                           : (enemy->animation == ENEMY_HURT)    ? 2
                                                                 : 4;
@@ -211,15 +251,16 @@ static void level_1_enemies_hide(void) {
     move_sprite(ENEMY_PROJECTILE_FIRST + i, 0, 0);
 }
 
-static uint8_t level_1_player_shot_collision(uint8_t x, uint8_t y) {
+static uint8_t level_1_player_shot_collision(uint8_t x, uint8_t y, uint16_t *xp_reward) {
   uint8_t i;
+  *xp_reward = 0;
 
   for (i = 0; i < LEVEL_1_ENEMY_COUNT; ++i) {
     Level1Enemy *enemy = &level_1_enemies[i];
 
     if (enemy->active && enemy->animation != ENEMY_DYING && x < enemy->x + 16 && x + 8 > enemy->x &&
         y < enemy->y + 16 && y + 8 > enemy->y) {
-      level_1_enemy_damage(i);
+      *xp_reward = level_1_enemy_damage(i);
       return 1;
     }
   }
@@ -236,7 +277,7 @@ static uint8_t level_1_enemy_projectile_collision(uint8_t player_x, uint8_t play
         shot->y < player_y + 16 && shot->y + 8 > player_y) {
       shot->active = 0;
       move_sprite(ENEMY_PROJECTILE_FIRST + i, 0, 0);
-      return 1;
+      return shot->damage;
     }
   }
   return 0;
@@ -248,7 +289,7 @@ static uint8_t level_1_enemy_body_collision(uint8_t player_x, uint8_t player_y) 
     Level1Enemy *enemy = &level_1_enemies[i];
     if (enemy->active && enemy->animation != ENEMY_DYING && player_x < enemy->x + 16 &&
         player_x + 16 > enemy->x && player_y < enemy->y + 16 && player_y + 16 > enemy->y) {
-      return 1;
+      return enemy->contact_damage;
     }
   }
   return 0;

@@ -23,7 +23,7 @@ build:
 $(OUT): $(OBJ)
 	$(CC) -Wa-l -Wl-m -Wl-j $(ROM_FLAGS) -DUSE_SFR_FOR_REG -o $(OUT) $(OBJ)
 
-build/main.o: $(SRC) src/enemies/level_1_enemies.h src/enemies/level_1_enemy_assets.h src/movement/sprite_movement.h src/ui/pause_overlay.h src/maps/level_1_sky.h src/maps/level_1_cloud_data.h | build
+build/main.o: $(SRC) src/enemies/level_1_enemies.h src/enemies/level_1_enemy_assets.h src/movement/sprite_movement.h src/player_progress.h src/ui/pause_overlay.h src/ui/game_hud.h src/maps/level_1_sky.h src/maps/level_1_cloud_data.h src/sprites/sprite_generate.h src/start/start_screen.h src/sprites/title_screen/start_screen_sprites.h src/sprites/texts/press_start_sprites.h | build
 	$(CC) -Wa-l -Wl-m -Wl-j $(ROM_FLAGS) -DUSE_SFR_FOR_REG -c -o $@ $<
 
 build/level_1_enemy_assets.o: src/enemies/level_1_enemy_assets.c src/enemies/level_1_enemy_assets.h src/enemies/level_1_enemy_data.h | build

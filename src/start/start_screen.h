@@ -1,4 +1,3 @@
-#include "../animations/arche_big.h"
 #include "../sprites/clean.h"
 #include "../sprites/texts/press_start_sprites.h"
 #include "../sprites/title_screen/start_screen_sprites.h"
@@ -25,9 +24,6 @@ void draw_press_start_sprite(void);
 void toggle_press_start_visibility(uint8_t visible);
 void load_128x128_full_screen(const uint8_t *full_screen_sprite, int8_t center,
                               int8_t isTitleScreen);
-void show_start_screen(void);
-
-void prueba_full_screen_subset(const uint8_t *full_screen_sprite);
 
 // #################################################################//
 // #                FUNCIONES DE PANTALLA DE INICIO                #//
@@ -256,46 +252,6 @@ void load_128x128_full_screen(const uint8_t *full_screen_sprite, int8_t center,
     clear_vram();                   // Limpia la memoria VRAM
     // set_bkg_data(0, 256, NULL);       // Limpia la VRAM de tiles de background (deja un fondo
     // negro)
-  }
-}
-
-// Pantalla de inicio
-void show_start_screen(void) {
-  // Forzar la carga de la fuente predeterminada
-  printf(" "); // Asegura que la fuente se cargue en la VRAM
-
-  DISPLAY_ON;   // Enciende la pantalla
-  SHOW_BKG;     // Muestra el fondo
-  SHOW_SPRITES; // Mostrar los sprites
-
-  // load_start_screen();
-
-  // Texto centrado
-  write_text_to_background("PRESS START", 4, 15); // Sprite 15, columna 4 (aproximadamente centrado)
-
-  // Sprite centrado de Arche
-  uint8_t center_x = (160 - 32) / 2; // Centro horizontal
-  uint8_t center_y = (144 - 32) / 2; // Centro vertical
-  // uint8_t base_x = 80; // Coordenada X inicial
-  // uint8_t base_y = 72; // Coordenada Y inicial
-  // init_start_metasprite(center_x, center_y); // Inicializa el metasprite en el centro
-  // render_static_metasprite(center_x, center_y); // Renderizar estáticamente el metasprite
-  animate_levitation_start_screen(center_x, center_y);
-
-  // Espera a que el jugador presione Start
-  while (1) {
-    wait_vbl_done();
-    if (joypad() & J_START) {
-      // Comienza el juego
-      hide_all_sprites();             // Oculta todos los sprites antes de comenzar el juego
-      fill_bkg_rect(0, 0, 20, 18, 0); // Limpia el fondo de la pantalla de inicio
-      HIDE_BKG;                       // Opcional: oculta el fondo si no lo necesitas en el juego
-      HIDE_SPRITES;                   // Opcional: oculta los sprites de la pantalla de inicio
-      DISPLAY_OFF;                    // Apaga la pantalla para preparar el juego
-      clear_vram();
-      break;
-    }
-    delay(100); // Pequeño retraso para reducir el uso de CPU
   }
 }
 
