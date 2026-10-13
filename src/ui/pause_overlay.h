@@ -1,0 +1,58 @@
+#ifndef PAUSE_OVERLAY_H
+#define PAUSE_OVERLAY_H
+
+#include "../sprites/sprite_ids.h"
+#include <gb/gb.h>
+#include <stdint.h>
+
+#define PAUSE_TEXT_TILE_FIRST 186
+#define PAUSE_TEXT_LENGTH     6
+#define PAUSE_TEXT_X          64
+#define PAUSE_TEXT_Y          32
+
+/* Letras PAUSED en negro, con fondo transparente. */
+const uint8_t pause_text_tiles[PAUSE_TEXT_LENGTH * 16] = {
+    /* P */
+    0xF8, 0xF8, 0xCC, 0xCC, 0xCC, 0xCC, 0xF8, 0xF8, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0x00, 0x00,
+    /* A */
+    0x38, 0x38, 0x6C, 0x6C, 0xC6, 0xC6, 0xC6, 0xC6, 0xFE, 0xFE, 0xC6, 0xC6, 0xC6, 0xC6, 0x00, 0x00,
+    /* U */
+    0xC6, 0xC6, 0xC6, 0xC6, 0xC6, 0xC6, 0xC6, 0xC6, 0xC6, 0xC6, 0xC6, 0xC6, 0x7C, 0x7C, 0x00, 0x00,
+    /* S */
+    0x7C, 0x7C, 0xC6, 0xC6, 0xC0, 0xC0, 0x7C, 0x7C, 0x06, 0x06, 0xC6, 0xC6, 0x7C, 0x7C, 0x00, 0x00,
+    /* E */
+    0xFE, 0xFE, 0xC0, 0xC0, 0xC0, 0xC0, 0xFC, 0xFC, 0xC0, 0xC0, 0xC0, 0xC0, 0xFE, 0xFE, 0x00, 0x00,
+    /* D */
+    0xF8, 0xF8, 0xCC, 0xCC, 0xC6, 0xC6, 0xC6, 0xC6, 0xC6, 0xC6, 0xCC, 0xCC, 0xF8, 0xF8, 0x00, 0x00};
+
+void init_pause_overlay(void) {
+  uint8_t i;
+  OBP0_REG = 0xE4;
+  OBP1_REG = 0x6C;
+  set_sprite_data(PAUSE_TEXT_TILE_FIRST, PAUSE_TEXT_LENGTH, pause_text_tiles);
+  for (i = 0; i != PAUSE_TEXT_LENGTH; ++i) {
+    uint8_t sprite_id = PAUSE_TEXT_SPRITE_FIRST + i;
+    set_sprite_tile(sprite_id, PAUSE_TEXT_TILE_FIRST + i);
+    set_sprite_prop(sprite_id, 0);
+    move_sprite(sprite_id, 0, 0);
+  }
+}
+
+void show_pause_overlay(void) {
+  uint8_t i;
+  for (i = 0; i != PAUSE_TEXT_LENGTH; ++i) {
+    uint8_t sprite_id = PAUSE_TEXT_SPRITE_FIRST + i;
+    set_sprite_tile(sprite_id, PAUSE_TEXT_TILE_FIRST + i);
+    set_sprite_prop(sprite_id, 0);
+    move_sprite(sprite_id, PAUSE_TEXT_X + (i * 8), PAUSE_TEXT_Y);
+  }
+}
+
+void hide_pause_overlay(void) {
+  uint8_t i;
+  for (i = 0; i != PAUSE_TEXT_LENGTH; ++i) {
+    move_sprite(PAUSE_TEXT_SPRITE_FIRST + i, 0, 0);
+  }
+}
+
+#endif

@@ -25,35 +25,35 @@ Proyecto de un juego homebrew para **Nintendo Game Boy** desarrollado en C con *
 
 **Arche GB** es un juego 2D de acción/disparos para Game Boy (DMG/CGB) escrito en C usando GBDK. El flujo actual arranca con dos pantallas de introducción a pantalla completa (128x128), continúa con un "skit" de diálogo animado del personaje, y desemboca en una escena de juego donde el jugador controla a Arche con el D-Pad y puede disparar proyectiles simples o en abanico.
 
-El proyecto está organizado en módulos reutilizables (sprites, animaciones, movimiento, texto, mapas, acciones) que se combinan desde [main.c](main.c), favoreciendo la separación de responsabilidades pese a las limitaciones de un target embebido de 8 bits.
+El código fuente está organizado en módulos reutilizables dentro de `src/`, con [src/main.c](src/main.c) como punto de entrada. La raíz queda reservada para configuración, documentación, herramientas y la carpeta `build/` para los resultados de compilación.
 
 ## Funcionalidades implementadas
 
-- **Pantallas de introducción**: carga y renderizado de pantallas completas de 128x128 píxeles (256 tiles), centradas o alineadas al borde inferior ([start/start_screen.h](start/start_screen.h)).
+- **Pantallas de introducción**: carga y renderizado de pantallas completas de 128x128 píxeles (256 tiles), centradas o alineadas al borde inferior ([src/start/start_screen.h](src/start/start_screen.h)).
 - **Pantalla de título con "PRESS START"**: sprite de texto animado de 64x16 px superpuesto sobre el fondo, con lógica para mostrar/ocultar.
-- **Skit de introducción**: escena de diálogo con el personaje Arche animado (efecto "slide to center") y una caja de texto que espera input del jugador ([skits/skit_start.h](skits/skit_start.h)).
+- **Skit de introducción**: escena de diálogo con el personaje Arche animado (efecto "slide to center") y una caja de texto que espera input del jugador ([src/skits/skit_start.h](src/skits/skit_start.h)).
 - **Sistema de texto / diálogo**:
-  - Conversión de texto ASCII a tiles de fondo ([text/text.h](text/text.h)).
-  - Caja de texto (text box) reutilizable ([text/text_box.h](text/text_box.h)).
+  - Conversión de texto ASCII a tiles de fondo ([src/text/text.h](src/text/text.h)).
+  - Caja de texto (text box) reutilizable ([src/text/text_box.h](src/text/text_box.h)).
   - Soporte para texto con formato tipo `printf` (parcialmente funcional, ver pendientes).
 - **Generación y animación de sprites (metasprites)**:
-  - Sprites compuestos de 16x16 (4 tiles), 32x32 (16 tiles) y 48x48 (36 tiles) px ([sprites/sprite_generate.h](sprites/sprite_generate.h)).
-  - Tablas de offsets reutilizables para distintos tamaños de metasprite ([sprites/sprite_maps.h](sprites/sprite_maps.h)).
-  - Animación de "levitación" y desplazamiento suave ("slide") hacia una posición objetivo ([animations/arche_big.h](animations/arche_big.h)).
-- **Movimiento del jugador**: sprite de 16x16 controlado por el D-Pad con límites de pantalla (clamping) ([movement/sprite_movement.h](movement/sprite_movement.h)).
+  - Sprites compuestos de 16x16 (4 tiles), 32x32 (16 tiles) y 48x48 (36 tiles) px ([src/sprites/sprite_generate.h](src/sprites/sprite_generate.h)).
+  - Tablas de offsets reutilizables para distintos tamaños de metasprite ([src/sprites/sprite_maps.h](src/sprites/sprite_maps.h)).
+  - Animación de "levitación" y desplazamiento suave ("slide") hacia una posición objetivo ([src/animations/arche_big.h](src/animations/arche_big.h)).
+- **Movimiento del jugador**: sprite de 16x16 controlado por el D-Pad con límites de pantalla (clamping) ([src/movement/sprite_movement.h](src/movement/sprite_movement.h)).
 - **Sistema de disparo**:
   - Disparo simple con el botón A.
-  - Disparo en abanico (3 proyectiles: recto, diagonal arriba, diagonal abajo) con el botón B y cooldown entre disparos ([actions/fire.h](actions/fire.h)).
-- **Utilidades de limpieza de memoria**: ocultar sprites no usados/todos los sprites y limpiar VRAM (tiles y mapa de fondo) entre pantallas ([sprites/clean.h](sprites/clean.h)).
-- **Entrada de usuario**: espera de pulsación de cualquier botón para avanzar de pantalla ([actions/input.h](actions/input.h)).
-- **Pipeline de assets gráficos**: script para convertir PNG a tiles de Game Boy con `rgbgfx` y volcarlos como array C con `xxd` ([rgbgfx.bat](rgbgfx.bat)).
-- **Datos de nivel/tilemap iniciales**: mapa de fondo de ejemplo para el nivel 1 ([maps/level_1_map.h](maps/level_1_map.h)) y helper de carga de tilemaps con scroll horizontal automático ([maps/generate_map.h](maps/generate_map.h)).
+  - Disparo en abanico (3 proyectiles: recto, diagonal arriba, diagonal abajo) con el botón B y cooldown entre disparos ([src/actions/fire.h](src/actions/fire.h)).
+- **Utilidades de limpieza de memoria**: ocultar sprites no usados/todos los sprites y limpiar VRAM (tiles y mapa de fondo) entre pantallas ([src/sprites/clean.h](src/sprites/clean.h)).
+- **Entrada de usuario**: espera de pulsación de cualquier botón para avanzar de pantalla ([src/actions/input.h](src/actions/input.h)).
+- **Pausa**: Start congela el juego y muestra el indicador «PAUSED»; otra pulsación reanuda ([src/ui/pause_overlay.h](src/ui/pause_overlay.h)).
+- **Pipeline de assets gráficos**: script para convertir PNG a tiles de Game Boy con `rgbgfx` y volcarlos como array C con `xxd` ([tools/rgbgfx.bat](tools/rgbgfx.bat)).
+- **Fondo del nivel 1**: nube gigante de primer plano (40x24 px) con silueta propia y nubes medianas/pequeñas espaciadas en el tilemap lejano. Las nubes avanzan hacia la izquierda a distintas velocidades, creando parallax ([src/maps/level_1_sky.h](src/maps/level_1_sky.h)).
 
 ## Work in progress / pendientes
 
-- **Carga de fondo/tilemap del nivel**: `load_and_draw_background_foreground_map` y el scroll de background están implementados pero comentados en [main.c](main.c); el gameplay actual corre sin fondo de nivel.
-- **Pantalla previa al nivel** (`load_level_start_screen`): implementada en [level_start/level_start_screen.h](level_start/level_start_screen.h) pero desactivada en `main()`. El `display_text_box` con argumentos `%s`/`%d` está marcado como no funcional ("no funciona con argumentos %s %d").
-- **Enemigos**: la carpeta [sprites/enemies/](sprites/enemies) existe pero está vacía; no hay sprites, IA ni colisiones de enemigos todavía.
+- **Pantalla previa al nivel** (`load_level_start_screen`): implementada en [src/level_start/level_start_screen.h](src/level_start/level_start_screen.h) pero desactivada en `main()`. El `display_text_box` con argumentos `%s`/`%d` está marcado como no funcional ("no funciona con argumentos %s %d").
+- **Enemigos**: no hay sprites, IA ni colisiones de enemigos todavía.
 - **Colisiones**: no hay detección de colisiones entre proyectiles, jugador, enemigos o fondo.
 - **Animación del personaje**: `arche_big.h` contiene animaciones de prueba (levitación, slide); falta un sistema de animación de sprite del jugador en gameplay (caminar, disparar, etc.).
 - **Múltiples experimentos comentados**: varias funciones alternativas (versiones anteriores de `draw_press_start_sprite`, `move_16x16_sprite`, `move_row`, `move_metasprite_custom`, offsets de 80x16, etc.) quedaron comentadas como referencia/histórico y deberían limpiarse o eliminarse a medida que el diseño se estabilice.
@@ -70,57 +70,30 @@ El proyecto está organizado en módulos reutilizables (sprites, animaciones, mo
 | Compilador | `lcc` (incluido en GBDK), invocado vía `make` |
 | Build system | `make` con [makefile](makefile) propio (reglas `all`, `run`, `clean`) |
 | Emulador de pruebas | [BGB](https://bgb.bircd.org/) |
-| Conversión de gráficos | `rgbgfx` (parte de [RGBDS](https://rgbds.gbdev.io/)) + `xxd` para volcar binarios a arrays C ([rgbgfx.bat](rgbgfx.bat)) |
+| Conversión de gráficos | `rgbgfx` (parte de [RGBDS](https://rgbds.gbdev.io/)) + `xxd` para volcar binarios a arrays C ([tools/rgbgfx.bat](tools/rgbgfx.bat)) |
 | Plataforma objetivo | Nintendo Game Boy / Game Boy Color (modo compatible, `gb/cgb.h`) |
-| Artefactos de salida | ROM `.gb` ([arche.gb](arche.gb)), `.ihx`, `.noi`, `.lst` (listados de compilación/depuración) |
+| Artefactos de salida | ROM `build/arche.gb` y temporales `.ihx`, `.noi`, `.lst` dentro de `build/` |
 
 ## Estructura del proyecto
 
 ```
-├── main.c                     # Punto de entrada: loop principal del juego
-├── makefile                   # Build (all / run / clean) usando GBDK lcc
-├── rgbgfx.bat                 # Conversión PNG -> tiles GB -> array C (.h)
-├── notes.txt                  # Notas rápidas de comandos y cálculo de tiles
-│
-├── actions/                   # Lógica de acciones del jugador
-│   ├── fire.h                 #   Disparo simple y en abanico
-│   └── input.h                #   Espera de input (avanzar pantallas)
-│
-├── animations/
-│   └── arche_big.h            # Animaciones de metasprites (levitación, slide-to-center)
-│
-├── level_start/
-│   └── level_start_screen.h   # Pantalla previa a un nivel (WIP, deshabilitada en main)
-│
-├── maps/
-│   ├── generate_map.h         # Carga de tileset/tilemap y scroll de fondo
-│   ├── level_1_map.h          # Datos de tilemap del nivel 1 (ejemplo)
-│   └── tilemap_offsets.h      # Offsets auxiliares de tilemap
-│
-├── movement/
-│   └── sprite_movement.h      # Movimiento del sprite del jugador (16x16) con límites
-│
-├── skits/
-│   └── skit_start.h           # Escena de diálogo inicial (skit) con Arche
-│
-├── sprites/
-│   ├── clean.h                 # Utilidades para ocultar sprites / limpiar VRAM
-│   ├── sprite_generate.h       # Generación/carga de metasprites (16x16, 32x32, 48x48)
-│   ├── sprite_maps.h           # Tablas de offsets de tiles por tamaño de metasprite
-│   ├── arche/                  # Datos de sprite del personaje (grande/pequeño)
-│   ├── effects/                # Sprites de efectos (p. ej. proyectiles)
-│   ├── enemies/                # (vacío) Reservado para sprites de enemigos
-│   ├── skits/                  # Sprites usados en el skit de introducción
-│   ├── texts/                  # Sprites de texto (p. ej. "PRESS START")
-│   ├── tilesets/                # Tilesets de fondo (p. ej. cielo nocturno con palmeras)
-│   └── title_screen/            # Sprites de las pantallas de título
-│
-├── start/
-│   └── start_screen.h          # Pantallas de introducción a pantalla completa
-│
-└── text/
-    ├── text.h                  # Escritura de texto en el fondo, texto con printf
-    └── text_box.h               # Caja de diálogo reutilizable
+├── src/                        # Código fuente C y datos gráficos
+│   ├── main.c                  # Punto de entrada y loop principal
+│   ├── actions/                # Disparo e input
+│   ├── animations/             # Animaciones
+│   ├── level_start/            # Pantalla previa al nivel
+│   ├── maps/                   # Mapas y fondos de niveles
+│   ├── movement/               # Movimiento del jugador
+│   ├── skits/                  # Escenas de diálogo
+│   ├── sprites/                # Utilidades y datos gráficos por tipo
+│   ├── start/                  # Pantallas de introducción
+│   ├── text/                   # Texto y cajas de diálogo
+│   └── ui/                     # Elementos de interfaz (pausa)
+├── build/                      # ROM y temporales de compilación (ignorado por Git)
+├── docs/                       # Notas del proyecto (notes.txt)
+├── tools/                      # Scripts auxiliares (rgbgfx.bat, make_old.bat)
+├── makefile                    # Build (all / run / clean) usando GBDK lcc
+└── README.md
 ```
 
 ## Setup del entorno
@@ -130,7 +103,7 @@ El proyecto está organizado en módulos reutilizables (sprites, animaciones, mo
 1. **GBDK** — SDK de desarrollo para Game Boy.
    - Descarga desde [gbdk.org](https://gbdk.org/) e instala (o descomprime) en una ruta local, por ejemplo `C:/GBDK`.
 2. **RGBDS** (para `rgbgfx`) — utilidad para convertir imágenes PNG a formato de tiles de Game Boy.
-   - Instálalo en `C:\RGBDS` (o ajusta la ruta en [rgbgfx.bat](rgbgfx.bat)).
+    - Instálalo en `C:\RGBDS` (o ajusta la ruta en [tools/rgbgfx.bat](tools/rgbgfx.bat)).
 3. **Vim (xxd)** o cualquier herramienta equivalente para volcar binarios a arrays C (`xxd -i`).
    - El script asume Vim instalado en `C:\Program Files\Vim\vim91\xxd.exe`.
 4. **BGB** — emulador de Game Boy usado para probar la ROM.
@@ -146,7 +119,7 @@ GBDK_PATH = C:/GBDK
 BGB_PATH  = "C:\ruta\a\bgb64.exe"
 ```
 
-Y en [rgbgfx.bat](rgbgfx.bat) si necesitas regenerar gráficos:
+Y en [tools/rgbgfx.bat](tools/rgbgfx.bat) si necesitas regenerar gráficos:
 
 ```bat
 "C:\RGBDS\rgbgfx" -o sprite.bin sprite.png
@@ -155,10 +128,10 @@ Y en [rgbgfx.bat](rgbgfx.bat) si necesitas regenerar gráficos:
 
 ## Compilación y ejecución
 
-Desde la raíz del proyecto (ver también [notes.txt](notes.txt)):
+Desde la raíz del proyecto (ver también [docs/notes.txt](docs/notes.txt)):
 
 ```powershell
-# Compilar el proyecto (genera arche.gb)
+# Compilar el proyecto (genera build/arche.gb)
 make all
 
 # Compilar y ejecutar directamente en BGB
@@ -170,16 +143,16 @@ make clean
 
 El makefile define tres reglas principales:
 
-- `all`: compila `main.c` a `main.o` y luego enlaza para producir `arche.gb`.
+- `all`: compila `src/main.c` a `build/main.o` y luego enlaza para producir `build/arche.gb`.
 - `run`: ejecuta `all` y luego abre la ROM resultante en el emulador BGB.
-- `clean`: elimina los archivos generados (`*.o`, `*.lst`, `*.map`, `*.gb`, `*.ihx`, `*.noi`).
+- `clean`: elimina los archivos generados dentro de `build/`.
 
 ### Generar/actualizar gráficos de sprites
 
 Para convertir un nuevo asset gráfico (PNG) a un header C con los tiles:
 
 ```powershell
-.\rgbgfx.bat
+.\tools\rgbgfx.bat
 ```
 
 Esto genera `sprite.bin` (tiles en formato Game Boy) y `sprite.h` (array C listo para incluir), a partir de `sprite.png`.
@@ -208,11 +181,12 @@ flowchart TD
 | D-Pad | Mover a Arche (arriba/abajo/izquierda/derecha) |
 | A | Disparo simple |
 | B | Disparo en abanico (3 proyectiles) |
+| Start | Pausar / reanudar el juego |
 | Cualquier botón | Avanzar diálogos / pantallas de introducción |
 
 ## Notas técnicas
 
-Cálculo de tiles por tamaño de sprite (referencia usada en el proyecto, ver [notes.txt](notes.txt)):
+Cálculo de tiles por tamaño de sprite (referencia usada en el proyecto, ver [docs/notes.txt](docs/notes.txt)):
 
 | Tamaño (px) | Píxeles | Tiles (8x8) |
 |---|---|---|
@@ -229,4 +203,4 @@ Cálculo de tiles por tamaño de sprite (referencia usada en el proyecto, ver [n
 | 160x144 (pantalla completa) | 23040 | 360 |
 
 - Las posiciones de sprites en Game Boy usan variables `volatile` para evitar que el compilador optimice de forma agresiva accesos que cambian por hardware/interrupciones.
-- El límite de hardware es de 40 sprites simultáneos en pantalla; las utilidades en [sprites/clean.h](sprites/clean.h) ayudan a mantener este límite ocultando sprites no usados.
+- El límite de hardware es de 40 sprites simultáneos en pantalla; las utilidades en [src/sprites/clean.h](src/sprites/clean.h) ayudan a mantener este límite ocultando sprites no usados.

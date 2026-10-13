@@ -1,4 +1,5 @@
 # Build artifacts (GBDK/lcc)
+build/
 *.gb
 *.o
 *.ihx
@@ -17,3 +18,14 @@ sprite.bin
 Thumbs.db
 .DS_Store
 .vscode/
+
+# Python helper artifacts
+__pycache__/
+*.py[cod]
+
+
+# Project assets and helper scripts stay local.
+assets/
+tools/
+notes.txt
+

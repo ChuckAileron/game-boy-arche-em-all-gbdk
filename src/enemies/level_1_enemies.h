@@ -1,0 +1,289 @@
+#ifndef LEVEL_1_ENEMIES_H
+#define LEVEL_1_ENEMIES_H
+
+#include "../sprites/sprite_ids.h"
+#include "level_1_enemy_assets.h"
+#include <gb/gb.h>
+#include <stdint.h>
+
+#define LEVEL_1_ENEMY_COUNT 2
+#define ENEMY_TILE_FIRST    192
+
+typedef enum { ENEMY_WASP, ENEMY_MEDUSA } Level1EnemyType;
+typedef enum { ENEMY_FLYING, ENEMY_ATTACKING, ENEMY_HURT, ENEMY_DYING } Level1EnemyAnimation;
+
+typedef struct {
+  uint8_t type, x, y, active;
+  uint8_t animation, frame, frame_tick;
+  uint8_t attack_tick, movement_tick, direction;
+  uint8_t rendered_animation, rendered_frame, frame_loaded;
+  uint8_t sprite_tiles_dirty;
+} Level1Enemy;
+
+typedef struct {
+  uint8_t x, y, active;
+  int8_t  dx, dy;
+} Level1EnemyShot;
+
+static Level1Enemy     level_1_enemies[LEVEL_1_ENEMY_COUNT];
+static Level1EnemyShot level_1_enemy_shots[ENEMY_PROJECTILE_COUNT];
+static uint8_t         level_1_enemy_tiles[LEVEL_1_ENEMY_COUNT][64];
+static uint8_t         level_1_respawn_timer;
+static uint8_t         level_1_wave_number;
+static const int8_t    enemy_sprite_offsets[4][2] = {{0, 0}, {8, 0}, {0, 8}, {8, 8}};
+
+static void level_1_enemy_render(uint8_t index) {
+  Level1Enemy *enemy       = &level_1_enemies[index];
+  uint8_t      base_sprite = ENEMY_SPRITE_FIRST + index * ENEMY_SPRITES_PER_ENEMY;
+  uint8_t      base_tile   = ENEMY_TILE_FIRST + index * 4;
+  uint8_t      i;
+
+  if (!enemy->active) {
+    for (i = 0; i < 4; ++i)
+      move_sprite(base_sprite + i, 0, 0);
+    return;
+  }
+
+  if (!enemy->frame_loaded || enemy->rendered_animation != enemy->animation ||
+      enemy->rendered_frame != enemy->frame) {
+    level_1_copy_enemy_frame(enemy->type, enemy->animation, enemy->frame,
+                             level_1_enemy_tiles[index]);
+    set_sprite_data(base_tile, 4, level_1_enemy_tiles[index]);
+    enemy->rendered_animation = enemy->animation;
+    enemy->rendered_frame     = enemy->frame;
+    enemy->frame_loaded       = 1;
+  }
+  for (i = 0; i < 4; ++i) {
+    /* The pause overlay temporarily borrows OAM entries 21-26. */
+    if (enemy->sprite_tiles_dirty) {
+      set_sprite_tile(base_sprite + i, base_tile + i);
+      set_sprite_prop(base_sprite + i, S_PALETTE);
+    }
+    move_sprite(base_sprite + i, enemy->x + enemy_sprite_offsets[i][0],
+                enemy->y + enemy_sprite_offsets[i][1]);
+  }
+  enemy->sprite_tiles_dirty = 0;
+}
+
+static void level_1_enemy_spawn(uint8_t index, uint8_t x, uint8_t y, uint8_t direction) {
+  Level1Enemy *enemy        = &level_1_enemies[index];
+  enemy->type               = index == 0 ? ENEMY_WASP : ENEMY_MEDUSA;
+  enemy->x                  = x;
+  enemy->y                  = y;
+  enemy->active             = 1;
+  enemy->animation          = ENEMY_FLYING;
+  enemy->frame              = 0;
+  enemy->frame_tick         = 0;
+  enemy->attack_tick        = 0;
+  enemy->movement_tick      = 0;
+  enemy->direction          = direction;
+  enemy->frame_loaded       = 0;
+  enemy->sprite_tiles_dirty = 1;
+  level_1_enemy_render(index);
+}
+
+static void level_1_start_wave(void) {
+  uint8_t wasp_y   = level_1_wave_number == 0 ? 44 : 28 + ((level_1_wave_number * 37u) % 80u);
+  uint8_t medusa_y = level_1_wave_number == 0 ? 92 : 32 + ((level_1_wave_number * 53u) % 80u);
+  ++level_1_wave_number;
+  level_1_enemy_spawn(0, 164, wasp_y, level_1_wave_number & 1u);
+  level_1_enemy_spawn(1, 172, medusa_y, (level_1_wave_number >> 1) & 1u);
+}
+
+static void level_1_enemies_init(void) {
+  uint8_t i;
+  level_1_wave_number   = 0;
+  level_1_respawn_timer = 0;
+  level_1_start_wave();
+
+  for (i = 0; i < ENEMY_PROJECTILE_COUNT; ++i) {
+    level_1_enemy_shots[i].active = 0;
+    set_sprite_tile(ENEMY_PROJECTILE_FIRST + i, BULLET_TILE_FIRST);
+    move_sprite(ENEMY_PROJECTILE_FIRST + i, 0, 0);
+  }
+}
+
+static void level_1_spawn_shot(uint8_t x, uint8_t y, int8_t dy) {
+  uint8_t i;
+  for (i = 0; i < ENEMY_PROJECTILE_COUNT; ++i) {
+    if (!level_1_enemy_shots[i].active) {
+      level_1_enemy_shots[i].x      = x;
+      level_1_enemy_shots[i].y      = y;
+      level_1_enemy_shots[i].dx     = -1;
+      level_1_enemy_shots[i].dy     = dy;
+      level_1_enemy_shots[i].active = 1;
+      return;
+    }
+  }
+}
+
+static void level_1_enemy_damage(uint8_t index) {
+  Level1Enemy *enemy = &level_1_enemies[index];
+  if (!enemy->active || enemy->animation == ENEMY_DYING)
+    return;
+  /* Wasp and Medusa are defeated by one Arche projectile. */
+  enemy->animation  = ENEMY_DYING;
+  enemy->frame      = 0;
+  enemy->frame_tick = 0;
+}
+
+static void level_1_enemy_update(uint8_t index, uint8_t player_y) {
+  Level1Enemy *enemy         = &level_1_enemies[index];
+  uint8_t      attack_period = (enemy->type == ENEMY_WASP) ? 110 : 145;
+  if (!enemy->active)
+    return;
+
+  if (++enemy->frame_tick >= (enemy->animation == ENEMY_DYING ? 4 : 8)) {
+    uint8_t frame_count = (enemy->animation == ENEMY_ATTACKING) ? 6
+                          : (enemy->animation == ENEMY_HURT)    ? 2
+                                                                : 4;
+    enemy->frame_tick   = 0;
+    if (++enemy->frame >= frame_count) {
+      enemy->frame = 0;
+      if (enemy->animation == ENEMY_DYING) {
+        enemy->active = 0;
+        level_1_enemy_render(index);
+        return;
+      }
+      if (enemy->animation != ENEMY_FLYING)
+        enemy->animation = ENEMY_FLYING;
+    }
+  }
+
+  if (enemy->animation == ENEMY_DYING || enemy->animation == ENEMY_HURT) {
+    level_1_enemy_render(index);
+    return;
+  }
+
+  ++enemy->movement_tick;
+  if (enemy->type == ENEMY_WASP) {
+    if (enemy->x > 92)
+      --enemy->x;
+
+    if ((enemy->movement_tick & 7u) == 0)
+      enemy->y += enemy->direction ? 2 : 254;
+
+    if (enemy->y < 32)
+      enemy->direction = 1;
+
+    if (enemy->y > 112)
+      enemy->direction = 0;
+
+  } else {
+    if (enemy->x > 112)
+      --enemy->x;
+
+    if ((enemy->movement_tick & 7u) == 0) {
+      if (enemy->y + 8 < player_y && enemy->y < 120)
+        ++enemy->y;
+
+      else if (enemy->y > player_y + 8 && enemy->y > 24)
+        --enemy->y;
+    }
+  }
+
+  if (++enemy->attack_tick >= attack_period) {
+    enemy->attack_tick = 0;
+    enemy->animation   = ENEMY_ATTACKING;
+    enemy->frame       = 0;
+
+    if (enemy->type == ENEMY_WASP) {
+      level_1_spawn_shot(enemy->x, enemy->y + 8, 0);
+    } else {
+      int8_t aim = (player_y + 8 < enemy->y + 8) ? -1 : (player_y + 8 > enemy->y + 8) ? 1 : 0;
+      level_1_spawn_shot(enemy->x, enemy->y + 8, aim);
+    }
+  }
+  level_1_enemy_render(index);
+}
+
+static void level_1_enemies_hide(void) {
+  uint8_t i;
+  uint8_t enemy_index;
+
+  for (i = 0; i < LEVEL_1_ENEMY_COUNT * ENEMY_SPRITES_PER_ENEMY; ++i)
+    move_sprite(ENEMY_SPRITE_FIRST + i, 0, 0);
+
+  for (enemy_index = 0; enemy_index < LEVEL_1_ENEMY_COUNT; ++enemy_index)
+    level_1_enemies[enemy_index].sprite_tiles_dirty = 1;
+
+  for (i = 0; i < ENEMY_PROJECTILE_COUNT; ++i)
+    move_sprite(ENEMY_PROJECTILE_FIRST + i, 0, 0);
+}
+
+static uint8_t level_1_player_shot_collision(uint8_t x, uint8_t y) {
+  uint8_t i;
+
+  for (i = 0; i < LEVEL_1_ENEMY_COUNT; ++i) {
+    Level1Enemy *enemy = &level_1_enemies[i];
+
+    if (enemy->active && enemy->animation != ENEMY_DYING && x < enemy->x + 16 && x + 8 > enemy->x &&
+        y < enemy->y + 16 && y + 8 > enemy->y) {
+      level_1_enemy_damage(i);
+      return 1;
+    }
+  }
+  return 0;
+}
+
+static uint8_t level_1_enemy_projectile_collision(uint8_t player_x, uint8_t player_y) {
+  uint8_t i;
+
+  for (i = 0; i < ENEMY_PROJECTILE_COUNT; ++i) {
+    Level1EnemyShot *shot = &level_1_enemy_shots[i];
+
+    if (shot->active && shot->x < player_x + 16 && shot->x + 8 > player_x &&
+        shot->y < player_y + 16 && shot->y + 8 > player_y) {
+      shot->active = 0;
+      move_sprite(ENEMY_PROJECTILE_FIRST + i, 0, 0);
+      return 1;
+    }
+  }
+  return 0;
+}
+
+static uint8_t level_1_enemy_body_collision(uint8_t player_x, uint8_t player_y) {
+  uint8_t i;
+  for (i = 0; i < LEVEL_1_ENEMY_COUNT; ++i) {
+    Level1Enemy *enemy = &level_1_enemies[i];
+    if (enemy->active && enemy->animation != ENEMY_DYING && player_x < enemy->x + 16 &&
+        player_x + 16 > enemy->x && player_y < enemy->y + 16 && player_y + 16 > enemy->y) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+static void level_1_enemies_update(uint8_t player_y) {
+  uint8_t i;
+
+  for (i = 0; i < LEVEL_1_ENEMY_COUNT; ++i)
+    level_1_enemy_update(i, player_y);
+
+  for (i = 0; i < ENEMY_PROJECTILE_COUNT; ++i) {
+    Level1EnemyShot *shot = &level_1_enemy_shots[i];
+
+    if (!shot->active)
+      continue;
+
+    shot->x += shot->dx;
+    shot->y += shot->dy;
+
+    if (shot->x < 8 || shot->y < 8 || shot->y > 152) {
+      shot->active = 0;
+      move_sprite(ENEMY_PROJECTILE_FIRST + i, 0, 0);
+    } else {
+      move_sprite(ENEMY_PROJECTILE_FIRST + i, shot->x, shot->y);
+    }
+  }
+
+  if (!level_1_enemies[0].active && !level_1_enemies[1].active) {
+    if (level_1_respawn_timer == 0) {
+      level_1_respawn_timer = 90;
+    } else if (--level_1_respawn_timer == 0) {
+      level_1_start_wave();
+    }
+  }
+}
+
+#endif
