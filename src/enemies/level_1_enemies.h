@@ -6,7 +6,7 @@
 #include <gb/gb.h>
 #include <stdint.h>
 
-#define LEVEL_1_ENEMY_COUNT 2
+#define LEVEL_1_ENEMY_COUNT 3
 #define ENEMY_TILE_FIRST    192
 
 typedef enum { ENEMY_WASP, ENEMY_MEDUSA } Level1EnemyType;
@@ -44,8 +44,16 @@ static Level1EnemyShot level_1_enemy_shots[ENEMY_PROJECTILE_COUNT];
 static uint8_t         level_1_enemy_tiles[LEVEL_1_ENEMY_COUNT][64];
 static uint8_t         level_1_respawn_timer;
 static uint8_t         level_1_wave_number;
+static uint8_t         level_1_round_in_wave;
+static uint8_t         level_1_rounds_total;
+static uint8_t level_1_round_delay;
+static uint8_t level_1_respawn_timer;
 static const int8_t    enemy_sprite_offsets[4][2]  = {{0, 0}, {8, 0}, {0, 8}, {8, 8}};
 static const uint8_t   enemy_attack_frame_ticks[6] = {8, 8, 6, 4, 6, 8};
+
+static uint8_t level_1_rounds_for_wave(uint8_t wave) {
+  return wave < 4 ? wave : 4;
+}
 
 static uint8_t level_1_enemy_frame_duration(const Level1Enemy *enemy) {
   if (enemy->animation == ENEMY_ATTACKING)
@@ -101,7 +109,7 @@ static uint16_t level_1_enemy_reward(EnemyRewardKind kind) {
 static void level_1_enemy_spawn(uint8_t index, uint8_t x, uint8_t y, uint8_t direction,
                                 uint16_t xp_reward) {
   Level1Enemy *enemy        = &level_1_enemies[index];
-  enemy->type               = index == 0 ? ENEMY_WASP : ENEMY_MEDUSA;
+  enemy->type               = index == 1 ? ENEMY_MEDUSA : ENEMY_WASP;
   enemy->x                  = x;
   enemy->y                  = y;
   enemy->active             = 1;
@@ -119,13 +127,19 @@ static void level_1_enemy_spawn(uint8_t index, uint8_t x, uint8_t y, uint8_t dir
   level_1_enemy_render(index);
 }
 
+static void level_1_start_round(void) {
+  uint8_t base_y = 28 + ((level_1_wave_number * 37u) % 60u);
+  uint8_t dir    = level_1_wave_number & 1u;
+  level_1_enemy_spawn(0, 164, base_y, dir, level_1_enemy_reward(XP_IRON_WASP));
+  level_1_enemy_spawn(1, 172, base_y + 24, (dir + 1u) & 1u, level_1_enemy_reward(XP_GHOST_MEDUSA));
+  level_1_enemy_spawn(2, 156, base_y + 48, dir ^ 1u, level_1_enemy_reward(XP_IRON_WASP));
+}
+
 static void level_1_start_wave(void) {
-  uint8_t wasp_y   = level_1_wave_number == 0 ? 44 : 28 + ((level_1_wave_number * 37u) % 80u);
-  uint8_t medusa_y = level_1_wave_number == 0 ? 92 : 32 + ((level_1_wave_number * 53u) % 80u);
-  ++level_1_wave_number;
-  level_1_enemy_spawn(0, 164, wasp_y, level_1_wave_number & 1u, level_1_enemy_reward(XP_IRON_WASP));
-  level_1_enemy_spawn(1, 172, medusa_y, (level_1_wave_number >> 1) & 1u,
-                      level_1_enemy_reward(XP_GHOST_MEDUSA));
+  level_1_round_in_wave = 0;
+  level_1_rounds_total  = level_1_rounds_for_wave(level_1_wave_number);
+  level_1_round_delay   = 0;
+  level_1_start_round();
 }
 
 static void level_1_enemies_init(uint8_t starting_wave) {
@@ -172,7 +186,9 @@ static uint16_t level_1_enemy_damage(uint8_t index) {
 
 static void level_1_enemy_update(uint8_t index, uint8_t player_y) {
   Level1Enemy *enemy         = &level_1_enemies[index];
-  uint8_t      attack_period = (enemy->type == ENEMY_WASP) ? 110 : 145;
+  uint8_t      base_period   = (enemy->type == ENEMY_WASP) ? 110 : 145;
+  uint8_t      speedup       = (level_1_wave_number < 10) ? level_1_wave_number * 5 : 50;
+  uint8_t      attack_period = (base_period * (100 - speedup)) / 100;
   if (!enemy->active)
     return;
 
@@ -323,11 +339,42 @@ static void level_1_enemies_update(uint8_t player_y) {
     }
   }
 
-  if (!level_1_enemies[0].active && !level_1_enemies[1].active) {
-    if (level_1_respawn_timer == 0) {
-      level_1_respawn_timer = 90;
-    } else if (--level_1_respawn_timer == 0) {
-      level_1_start_wave();
+  for (i = 0; i < LEVEL_1_ENEMY_COUNT; ++i) {
+    if (!level_1_enemies[i].active && level_1_enemies[i].animation != ENEMY_DYING) {
+      if (level_1_respawn_timer == 0) {
+        level_1_respawn_timer = 60;
+      } else if (--level_1_respawn_timer == 0) {
+        if ((rand() & 0xFFu) < 64u) {
+          uint8_t base_y = 28 + ((level_1_wave_number * 37u) % 60u);
+          uint8_t dir    = level_1_wave_number & 1u;
+          uint8_t new_type = (rand() & 1u) ? ENEMY_WASP : ENEMY_MEDUSA;
+          level_1_enemies[i].type = new_type;
+          level_1_enemy_spawn(i, 164, base_y + (i * 24), dir,
+                              (new_type == ENEMY_WASP) ? level_1_enemy_reward(XP_IRON_WASP)
+                                                       : level_1_enemy_reward(XP_GHOST_MEDUSA));
+        }
+      }
+    }
+  }
+
+  uint8_t any_active = 0;
+  for (i = 0; i < LEVEL_1_ENEMY_COUNT; ++i) {
+    if (level_1_enemies[i].active) {
+      any_active = 1;
+      break;
+    }
+  }
+  if (!any_active) {
+    if (level_1_round_delay == 0) {
+      level_1_round_delay = 90;
+    } else if (--level_1_round_delay == 0) {
+      ++level_1_round_in_wave;
+      if (level_1_round_in_wave < level_1_rounds_total) {
+        level_1_start_round();
+      } else {
+        ++level_1_wave_number;
+        level_1_start_wave();
+      }
     }
   }
 }

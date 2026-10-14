@@ -5,47 +5,42 @@
 #include <stdint.h>
 #include "../player_progress.h"
 
-#define GAME_HUD_OAM_FIRST    0
-#define GAME_HUD_SPRITE_COUNT 18
-#define GAME_HUD_TILE_FIRST   200
+#define GAME_HUD_TILE_FIRST   220
 #define GAME_HUD_TILE_COUNT   17
-
-#define GAME_HUD_HEART_SPRITE 0
-#define GAME_HUD_HEALTH_FIRST 1
-#define GAME_HUD_LEVEL_N      8
-#define GAME_HUD_LEVEL_V      9
-#define GAME_HUD_LEVEL_TENS   10
-#define GAME_HUD_LEVEL_ONES   11
-#define GAME_HUD_XP_FIRST     12
+#define GAME_HUD_ROW_Y        0
+#define GAME_HUD_INFO_ROW_Y   10
+#define GAME_HUD_SPRITE_FIRST 0
+#define GAME_HUD_SPRITE_COUNT 10
+#define GAME_HUD_BG_BLANK     0
 
 #define GAME_HUD_TILE_HEART          0
+#define GAME_HUD_TILE_HEALTH_FIRST   1
 #define GAME_HUD_TILE_HEALTH_FULL    1
 #define GAME_HUD_TILE_HEALTH_EMPTY   2
 #define GAME_HUD_TILE_HEALTH_LOCKED  3
 #define GAME_HUD_TILE_LVL_LABEL      4
 #define GAME_HUD_TILE_LEVEL_VALUE    5
 #define GAME_HUD_TILE_XP_LABEL       6
-#define GAME_HUD_TILE_XP_CURRENT     7 /* tiles 7..9 */
+#define GAME_HUD_TILE_XP_CURRENT     7
 #define GAME_HUD_TILE_XP_SLASH       10
-#define GAME_HUD_TILE_XP_NEEDED      11 /* tiles 11..13 */
+#define GAME_HUD_TILE_XP_NEEDED      11
 #define GAME_HUD_TILE_MAX_M          14
 #define GAME_HUD_TILE_MAX_A          15
 #define GAME_HUD_TILE_MAX_X          16
 
 static uint8_t game_hud_tiles[GAME_HUD_TILE_COUNT * 16];
 
-/* Digitos de 4x7 pixels (mas grandes y legibles que los 3x5 anteriores). */
 static const uint8_t game_hud_big_digits[10][7] = {
-    {0x6, 0x9, 0x9, 0x9, 0x9, 0x9, 0x6}, /* 0 */
-    {0x2, 0x6, 0x2, 0x2, 0x2, 0x2, 0x7}, /* 1 */
-    {0x6, 0x9, 0x1, 0x2, 0x4, 0x8, 0xF}, /* 2 */
-    {0xE, 0x1, 0x1, 0x6, 0x1, 0x1, 0xE}, /* 3 */
-    {0x9, 0x9, 0x9, 0xF, 0x1, 0x1, 0x1}, /* 4 */
-    {0xF, 0x8, 0x8, 0xE, 0x1, 0x1, 0xE}, /* 5 */
-    {0x6, 0x8, 0x8, 0xE, 0x9, 0x9, 0x6}, /* 6 */
-    {0xF, 0x1, 0x2, 0x2, 0x4, 0x4, 0x4}, /* 7 */
-    {0x6, 0x9, 0x9, 0x6, 0x9, 0x9, 0x6}, /* 8 */
-    {0x6, 0x9, 0x9, 0x7, 0x1, 0x1, 0x6}, /* 9 */
+    {0x6, 0x9, 0x9, 0x9, 0x9, 0x9, 0x6},
+    {0x2, 0x6, 0x2, 0x2, 0x2, 0x2, 0x7},
+    {0x6, 0x9, 0x1, 0x2, 0x4, 0x8, 0xF},
+    {0xE, 0x1, 0x1, 0x6, 0x1, 0x1, 0xE},
+    {0x9, 0x9, 0x9, 0xF, 0x1, 0x1, 0x1},
+    {0xF, 0x8, 0x8, 0xE, 0x1, 0x1, 0xE},
+    {0x6, 0x8, 0x8, 0xE, 0x9, 0x9, 0x6},
+    {0xF, 0x1, 0x2, 0x2, 0x4, 0x4, 0x4},
+    {0x6, 0x9, 0x9, 0x6, 0x9, 0x9, 0x6},
+    {0x6, 0x9, 0x9, 0x7, 0x1, 0x1, 0x6},
 };
 
 static void game_hud_clear_tile(uint8_t tile) {
@@ -87,15 +82,12 @@ static void game_hud_draw_health_segment(uint8_t tile, uint8_t style) {
   for (y = 0; y < 8; ++y) {
     for (x = 0; x < 8; ++x) {
       uint8_t color = 0;
-      if (style == 0) {
-        color = 3; /* Vida actual: cuadro negro solido. */
-      } else if (style == 1) {
-        /* Vida perdida: borde negro con relleno claro, para que la barra
-           se vea consistente (cuadro vacio en vez de desaparecer). */
+      if (style == 0)
+        color = 3;
+      else if (style == 1)
         color = (x == 0 || x == 7 || y == 0 || y == 7) ? 3 : 1;
-      } else if (x == 0 || x == 7 || y == 0 || y == 7 || ((x + y) & 1u) == 0) {
-        color = 1; /* Vida bloqueada (aun no desbloqueada): damero claro. */
-      }
+      else if (x == 0 || x == 7 || y == 0 || y == 7 || ((x + y) & 1u) == 0)
+        color = 1;
       if (color)
         game_hud_pixel(tile, x, y, color);
     }
@@ -121,8 +113,8 @@ static void game_hud_build_xp_tiles(uint32_t xp_progress, uint32_t xp_required) 
   game_hud_draw_xp_field(GAME_HUD_TILE_XP_NEEDED, xp_required);
   for (i = 0; i < 8; ++i)
     game_hud_pixel(GAME_HUD_TILE_XP_SLASH, (uint8_t)(7u - i), i, 3);
-  set_sprite_data((uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_CURRENT), 7,
-                  &game_hud_tiles[GAME_HUD_TILE_XP_CURRENT * 16]);
+  set_bkg_data((uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_CURRENT), 7,
+               &game_hud_tiles[GAME_HUD_TILE_XP_CURRENT * 16]);
 }
 
 static void game_hud_update(uint8_t health, uint8_t max_health, uint8_t level) {
@@ -131,84 +123,93 @@ static void game_hud_update(uint8_t health, uint8_t max_health, uint8_t level) {
   uint8_t ones = level % 10u;
 
   for (i = 0; i < 7; ++i) {
-    uint8_t tile = i >= max_health ? GAME_HUD_TILE_HEALTH_LOCKED
-                   : i < health    ? GAME_HUD_TILE_HEALTH_FULL
-                                   : GAME_HUD_TILE_HEALTH_EMPTY;
-    set_sprite_tile(GAME_HUD_HEALTH_FIRST + i, GAME_HUD_TILE_FIRST + tile);
+    uint8_t tile;
+    if (i >= max_health)
+      tile = GAME_HUD_TILE_HEALTH_LOCKED;
+    else if (i < health)
+      tile = GAME_HUD_TILE_HEALTH_FULL;
+    else
+      tile = GAME_HUD_TILE_HEALTH_EMPTY;
+    set_sprite_tile((uint8_t)(GAME_HUD_SPRITE_FIRST + 1 + i),
+                    (uint8_t)(GAME_HUD_TILE_FIRST + tile));
+    move_sprite(GAME_HUD_SPRITE_FIRST + 1 + i, 24 + i * 8, 16);
   }
 
   game_hud_draw_pair(GAME_HUD_TILE_LEVEL_VALUE, tens, ones);
   set_sprite_data((uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_LEVEL_VALUE), 1,
                   &game_hud_tiles[GAME_HUD_TILE_LEVEL_VALUE * 16]);
+  set_sprite_tile(GAME_HUD_SPRITE_FIRST,
+                  (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_HEART));
+  set_sprite_tile(GAME_HUD_SPRITE_FIRST + 8,
+                  (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_LVL_LABEL));
+  set_sprite_tile(GAME_HUD_SPRITE_FIRST + 9,
+                  (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_LEVEL_VALUE));
+  move_sprite(GAME_HUD_SPRITE_FIRST, 16, 16);
+  move_sprite(GAME_HUD_SPRITE_FIRST + 8, 144, 16);
+  move_sprite(GAME_HUD_SPRITE_FIRST + 9, 152, 16);
 
-  for (i = GAME_HUD_LEVEL_TENS; i < GAME_HUD_SPRITE_COUNT; ++i)
-    move_sprite(i, 0, 0);
-
-  set_sprite_tile(GAME_HUD_HEART_SPRITE, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_HEART));
-  set_sprite_tile(GAME_HUD_LEVEL_N, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_LVL_LABEL));
-  set_sprite_tile(GAME_HUD_LEVEL_V, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_LEVEL_VALUE));
-  move_sprite(GAME_HUD_HEART_SPRITE, 16, 16);
-  move_sprite(GAME_HUD_LEVEL_N, 144, 16);
-  move_sprite(GAME_HUD_LEVEL_V, 152, 16);
-  for (i = 0; i < 7; ++i)
-    move_sprite(GAME_HUD_HEALTH_FIRST + i, 24 + i * 8, 16);
+  uint8_t blank = GAME_HUD_BG_BLANK;
+  for (i = 0; i < 20; ++i) {
+    set_bkg_tiles(i, GAME_HUD_INFO_ROW_Y, 1, 1, &blank);
+    set_bkg_tiles(i, GAME_HUD_INFO_ROW_Y + 1, 1, 1, &blank);
+    set_bkg_tiles(i, GAME_HUD_INFO_ROW_Y + 2, 1, 1, &blank);
+  }
 }
 
 static void game_hud_show_info(uint8_t health, uint8_t max_health, uint8_t level,
                                uint32_t xp_progress, uint32_t xp_required) {
   uint8_t i;
   game_hud_update(health, max_health, level);
-  move_sprite(GAME_HUD_HEART_SPRITE, 0, 0);
+  for (i = 0; i < GAME_HUD_SPRITE_COUNT; ++i)
+    move_sprite(GAME_HUD_SPRITE_FIRST + i, 0, 0);
 
-  set_sprite_tile(0, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_LVL_LABEL));
-  set_sprite_tile(1, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_LEVEL_VALUE));
+  uint8_t lvl_tile = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_LVL_LABEL);
+  uint8_t val_tile = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_LEVEL_VALUE);
+  set_bkg_tiles(9, GAME_HUD_INFO_ROW_Y, 1, 1, &lvl_tile);
+  set_bkg_tiles(10, GAME_HUD_INFO_ROW_Y, 1, 1, &val_tile);
+
   if (level == PLAYER_LEVEL_CAP) {
-    move_sprite(0, 60, 48);
-    move_sprite(1, 68, 48);
-    set_sprite_tile(2, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_MAX_M));
-    set_sprite_tile(3, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_MAX_A));
-    set_sprite_tile(4, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_MAX_X));
-    move_sprite(2, 76, 48);
-    move_sprite(3, 84, 48);
-    move_sprite(4, 92, 48);
-    for (i = 5; i < 8; ++i)
-      move_sprite(i, 0, 0);
-    move_sprite(16, 0, 0);
-    move_sprite(17, 0, 0);
+    uint8_t m = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_MAX_M);
+    uint8_t a = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_MAX_A);
+    uint8_t x = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_MAX_X);
+    set_bkg_tiles(11, GAME_HUD_INFO_ROW_Y, 1, 1, &m);
+    set_bkg_tiles(12, GAME_HUD_INFO_ROW_Y, 1, 1, &a);
+    set_bkg_tiles(13, GAME_HUD_INFO_ROW_Y, 1, 1, &x);
   } else {
     game_hud_build_xp_tiles(xp_progress, xp_required);
-    move_sprite(0, 72, 48);
-    move_sprite(1, 80, 48);
-    set_sprite_tile(2, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_LABEL));
-    set_sprite_tile(3, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_CURRENT + 0));
-    set_sprite_tile(4, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_CURRENT + 1));
-    set_sprite_tile(5, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_CURRENT + 2));
-    set_sprite_tile(6, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_SLASH));
-    set_sprite_tile(7, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_NEEDED + 0));
-    set_sprite_tile(16, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_NEEDED + 1));
-    set_sprite_tile(17, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_NEEDED + 2));
-    move_sprite(2, 48, 64);
-    move_sprite(3, 56, 64);
-    move_sprite(4, 64, 64);
-    move_sprite(5, 72, 64);
-    move_sprite(6, 80, 64);
-    move_sprite(7, 88, 64);
-    move_sprite(16, 96, 64);
-    move_sprite(17, 104, 64);
+    uint8_t xp_label = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_LABEL);
+    uint8_t xp_cur0 = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_CURRENT);
+    uint8_t xp_cur1 = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_CURRENT + 1);
+    uint8_t xp_cur2 = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_CURRENT + 2);
+    uint8_t xp_slash = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_SLASH);
+    uint8_t xp_need0 = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_NEEDED);
+    uint8_t xp_need1 = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_NEEDED + 1);
+    uint8_t xp_need2 = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_XP_NEEDED + 2);
+    set_bkg_tiles(6, GAME_HUD_INFO_ROW_Y + 1, 1, 1, &xp_label);
+    set_bkg_tiles(7, GAME_HUD_INFO_ROW_Y + 1, 1, 1, &xp_cur0);
+    set_bkg_tiles(8, GAME_HUD_INFO_ROW_Y + 1, 1, 1, &xp_cur1);
+    set_bkg_tiles(9, GAME_HUD_INFO_ROW_Y + 1, 1, 1, &xp_cur2);
+    set_bkg_tiles(10, GAME_HUD_INFO_ROW_Y + 1, 1, 1, &xp_slash);
+    set_bkg_tiles(11, GAME_HUD_INFO_ROW_Y + 1, 1, 1, &xp_need0);
+    set_bkg_tiles(12, GAME_HUD_INFO_ROW_Y + 1, 1, 1, &xp_need1);
+    set_bkg_tiles(13, GAME_HUD_INFO_ROW_Y + 1, 1, 1, &xp_need2);
   }
-  set_sprite_tile(8, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_HEART));
-  move_sprite(8, 48, 80);
+
+  uint8_t heart_tile = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_HEART);
+  set_bkg_tiles(6, GAME_HUD_INFO_ROW_Y + 2, 1, 1, &heart_tile);
   for (i = 0; i < 7; ++i) {
-    uint8_t tile = i >= max_health ? GAME_HUD_TILE_HEALTH_LOCKED
-                   : i < health    ? GAME_HUD_TILE_HEALTH_FULL
-                                   : GAME_HUD_TILE_HEALTH_EMPTY;
-    set_sprite_tile(9 + i, (uint8_t)(GAME_HUD_TILE_FIRST + tile));
-    move_sprite(9 + i, 56 + i * 8, 80);
+    uint8_t tile;
+    if (i >= max_health)
+      tile = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_HEALTH_LOCKED);
+    else if (i < health)
+      tile = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_HEALTH_FULL);
+    else
+      tile = (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_HEALTH_EMPTY);
+    set_bkg_tiles(7 + i, GAME_HUD_INFO_ROW_Y + 2, 1, 1, &tile);
   }
 }
 
 static void game_hud_init(uint8_t health, uint8_t max_health, uint8_t level) {
-  /* Corazon 8x8 simple y simetrico: cada fila es palindromo de bits. */
   static const uint8_t heart_rows[8] = {0x00, 0x66, 0xFF, 0xFF, 0x7E, 0x3C, 0x18, 0x00};
   static const uint8_t lvl_rows[8]   = {0x96, 0x96, 0x96, 0x96, 0x96, 0x96, 0xCB, 0x00};
   static const uint8_t rows_x[5]     = {5, 5, 2, 5, 5};
@@ -246,18 +247,11 @@ static void game_hud_init(uint8_t health, uint8_t max_health, uint8_t level) {
         game_hud_pixel(GAME_HUD_TILE_MAX_X, x + 1, y + 1, 3);
     }
   }
+  set_bkg_data(GAME_HUD_TILE_FIRST, GAME_HUD_TILE_COUNT, game_hud_tiles);
   set_sprite_data(GAME_HUD_TILE_FIRST, GAME_HUD_TILE_COUNT, game_hud_tiles);
-
   for (i = 0; i < GAME_HUD_SPRITE_COUNT; ++i)
-    set_sprite_prop(GAME_HUD_OAM_FIRST + i, 0);
-  set_sprite_tile(GAME_HUD_HEART_SPRITE, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_HEART));
-  set_sprite_tile(GAME_HUD_LEVEL_N, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_LVL_LABEL));
-  set_sprite_tile(GAME_HUD_LEVEL_V, (uint8_t)(GAME_HUD_TILE_FIRST + GAME_HUD_TILE_LEVEL_VALUE));
-  for (i = 0; i < 7; ++i)
-    move_sprite(GAME_HUD_HEALTH_FIRST + i, 24 + i * 8, 16);
-  move_sprite(GAME_HUD_HEART_SPRITE, 16, 16);
-  move_sprite(GAME_HUD_LEVEL_N, 144, 16);
-  move_sprite(GAME_HUD_LEVEL_V, 152, 16);
+    set_sprite_prop(GAME_HUD_SPRITE_FIRST + i, 0);
+
   game_hud_update(health, max_health, level);
 }
 

@@ -9,16 +9,14 @@
 
 static uint8_t sky_frame;
 
-/* The clouds are part of the scrolling BG map, not OAM sprites. */
 void hide_level_1_cloud_sprites(void) {}
 void show_level_1_cloud_sprites(void) {}
 
 void init_level_1_sky(void) {
   set_bkg_data(0, LEVEL_1_CLOUD_TILE_COUNT, level_1_cloud_tiles);
-  BGP_REG = 0xE4; /* Fondo con el tono más claro de la paleta DMG (índice 0). */
+  BGP_REG = 0xE4;
   fill_bkg_rect(0, 0, 32, 32, NUBES_BLANK_TILE);
 
-  /* Varied cloud types and sizes spread across the 32-tile scrolling map. */
   set_bkg_tiles(2, 2, NUBE_CUMULO_32X16_WIDTH_TILES, NUBE_CUMULO_32X16_HEIGHT_TILES,
                 nube_cumulo_32x16_map);
   set_bkg_tiles(10, 8, NUBE_ESTELA_32X16_WIDTH_TILES, NUBE_ESTELA_32X16_HEIGHT_TILES,

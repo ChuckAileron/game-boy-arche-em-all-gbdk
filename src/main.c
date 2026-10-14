@@ -151,6 +151,7 @@ void main(void) {
   hide_all_sprites();
   DISPLAY_OFF;
   init_level_1_sky();
+  set_bkg_data(0, LEVEL_1_CLOUD_TILE_COUNT, level_1_cloud_tiles);
 
   // Cargar datos gráficos
   load_16_x_16_sprite_at(PLAYER_SPRITE_FIRST, PLAYER_TILE_FIRST, arche_sprite_tiles, player_x,
@@ -160,15 +161,16 @@ void main(void) {
   init_pause_overlay();
   level_1_enemies_init(0); // Wasp y Medusa del primer nivel
   fire_update_skills(player_level);
-  game_hud_init(player_health, player_max_health, player_level);
   DISPLAY_ON;
   SHOW_BKG;
   SHOW_SPRITES;
+  game_hud_init(player_health, player_max_health, player_level);
 
   uint8_t paused             = 0;
   uint8_t start_was_pressed  = (joypad() & J_START) != 0;
   uint8_t info_screen        = 0;
   uint8_t select_was_pressed = (joypad() & J_SELECT) != 0;
+  uint8_t select_scroll_x    = 0;
 
   // Bucle principal. Lógica del juego, detección de entradas, etc.
   while (1) {
@@ -209,6 +211,8 @@ void main(void) {
       if (!select_was_pressed) {
         info_screen = !info_screen;
         if (info_screen) {
+          select_scroll_x = SCX_REG;
+          SCX_REG = 0;
           level_1_enemies_hide();
           for (uint8_t i = 0; i < 4; ++i)
             move_sprite(PLAYER_SPRITE_FIRST + i, 0, 0);
@@ -219,6 +223,7 @@ void main(void) {
                              player_xp_required);
         } else {
           game_hud_update(player_health, player_max_health, player_level);
+          SCX_REG = select_scroll_x;
         }
       }
       select_was_pressed = 1;
