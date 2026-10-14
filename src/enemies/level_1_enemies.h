@@ -170,6 +170,41 @@ static void level_1_spawn_shot(uint8_t x, uint8_t y, int8_t dy) {
   }
 }
 
+static uint8_t level_1_spawn_medusa_volley(uint8_t x, uint8_t y) {
+  uint8_t first = ENEMY_PROJECTILE_COUNT;
+  uint8_t second = ENEMY_PROJECTILE_COUNT;
+  uint8_t i;
+
+  for (i = 0; i < ENEMY_PROJECTILE_COUNT; ++i) {
+    if (!level_1_enemy_shots[i].active) {
+      if (first == ENEMY_PROJECTILE_COUNT)
+        first = i;
+      else {
+        second = i;
+        break;
+      }
+    }
+  }
+
+  if (second == ENEMY_PROJECTILE_COUNT)
+    return 0;
+
+  level_1_enemy_shots[first].x = x;
+  level_1_enemy_shots[first].y = y;
+  level_1_enemy_shots[first].dx = -1;
+  level_1_enemy_shots[first].dy = -1;
+  level_1_enemy_shots[first].damage = 1;
+  level_1_enemy_shots[first].active = 1;
+
+  level_1_enemy_shots[second].x = x;
+  level_1_enemy_shots[second].y = y;
+  level_1_enemy_shots[second].dx = -1;
+  level_1_enemy_shots[second].dy = 1;
+  level_1_enemy_shots[second].damage = 1;
+  level_1_enemy_shots[second].active = 1;
+  return 1;
+}
+
 static uint16_t level_1_enemy_damage(uint8_t index) {
   Level1Enemy *enemy = &level_1_enemies[index];
   if (!enemy->active || enemy->animation == ENEMY_DYING)
@@ -242,18 +277,18 @@ static void level_1_enemy_update(uint8_t index, uint8_t player_y) {
   }
 
   if (++enemy->attack_tick >= attack_period) {
+    if (enemy->type == ENEMY_WASP) {
+      level_1_spawn_shot(enemy->x, enemy->y + 8, 0);
+    } else if (!level_1_spawn_medusa_volley(enemy->x, enemy->y + 8)) {
+      /* Espera hasta que haya dos slots y lanza siempre la pareja completa. */
+      enemy->attack_tick = attack_period - 1;
+      level_1_enemy_render(index);
+      return;
+    }
+
     enemy->attack_tick = 0;
     enemy->animation   = ENEMY_ATTACKING;
     enemy->frame       = 0;
-
-    if (enemy->type == ENEMY_WASP) {
-      level_1_spawn_shot(enemy->x, enemy->y + 8, 0);
-    } else {
-      /* Medusa: dos proyectiles en diagonal (uno arriba y otro abajo),
-         nunca uno recto hacia el sprite del jugador. */
-      level_1_spawn_shot(enemy->x, enemy->y + 8, -1);
-      level_1_spawn_shot(enemy->x, enemy->y + 8, 1);
-    }
   }
   level_1_enemy_render(index);
 }
